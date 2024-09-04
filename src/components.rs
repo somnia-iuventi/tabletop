@@ -1132,7 +1132,7 @@ impl<T: Moddable> Mod<T> {
     }
 }
 
-pub trait Moddable: Send + Sync {
+pub trait Moddable: Component {
     fn stat(&mut self) -> &mut Stat;
 }
 
