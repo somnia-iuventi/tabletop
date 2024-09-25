@@ -9,7 +9,7 @@ pub struct NewCharacterPlugin;
 
 impl Plugin for NewCharacterPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PlayerBundle>();
+        app.init_resource::<BasePlayer>();
         app.add_event::<CreateCharacter>();
         app.add_systems(Update, ui.run_if(in_state(AppState::NewCharacter)));
         app.add_systems(OnEnter(AppState::NewCharacter), setup);
@@ -61,16 +61,16 @@ fn on_character_creation(
     skills.persuasion.0.stat.total = skills.persuasion.0.stat.base;
 
     let darkvision: Option<DarkVision> = match newchar.race {
-        Race::HillDwarf => Some(DarkVision(Stat::new(60))),
-        Race::MountainDwarf => Some(DarkVision(Stat::new(60))),
-        Race::HighElf => Some(DarkVision(Stat::new(60))),
-        Race::WoodElf => Some(DarkVision(Stat::new(60))),
-        Race::DarkElf => Some(DarkVision(Stat::new(120))),
-        Race::HalfElf => Some(DarkVision(Stat::new(60))),
-        Race::RockGnome => Some(DarkVision(Stat::new(60))),
-        Race::ForestGnome => Some(DarkVision(Stat::new(60))),
-        Race::HalfOrc => Some(DarkVision(Stat::new(60))),
-        Race::Tiefling => Some(DarkVision(Stat::new(60))),
+        Race::HillDwarf => Some(DarkVision(Stat::new(60., vec![]))),
+        Race::MountainDwarf => Some(DarkVision(Stat::new(60., vec![]))),
+        Race::HighElf => Some(DarkVision(Stat::new(60., vec![]))),
+        Race::WoodElf => Some(DarkVision(Stat::new(60., vec![]))),
+        Race::DarkElf => Some(DarkVision(Stat::new(120., vec![]))),
+        Race::HalfElf => Some(DarkVision(Stat::new(60., vec![]))),
+        Race::RockGnome => Some(DarkVision(Stat::new(60., vec![]))),
+        Race::ForestGnome => Some(DarkVision(Stat::new(60., vec![]))),
+        Race::HalfOrc => Some(DarkVision(Stat::new(60., vec![]))),
+        Race::Tiefling => Some(DarkVision(Stat::new(60., vec![]))),
         _ => None,
     };
     let char_id = commands
@@ -80,13 +80,13 @@ fn on_character_creation(
             name: newchar.name.clone(),
             player_name: newchar.player_name.clone(),
             ac: newchar.ac.clone(),
-            speed: newchar.speed.clone(),
+            speed: Speed(Stat::new(newchar.speed.0.total, vec![])),
             abilities,
-            skills: newchar.skills.clone(),
+            skills,
             race: newchar.race.clone(),
             class: newchar.class.clone(),
-            health: Health(newchar.max_health.0).clone(),
-            max_health: newchar.max_health.clone(),
+            health: Health(newchar.max_health.0.total).clone(),
+            max_health: MaxHealth(Stat::new(newchar.max_health.0.base, vec![])),
             background: newchar.background.clone(),
             alignment: newchar.alignment.clone(),
             xp: newchar.xp.clone(),
@@ -105,7 +105,7 @@ fn on_character_creation(
 
 fn setup(mut newchar: ResMut<PlayerBundle>, mut commands: Commands) {}
 
-fn ui(mut contexts: EguiContexts, mut newchar: ResMut<PlayerBundle>, mut commands: Commands) {
+fn ui(mut contexts: EguiContexts, mut newchar: ResMut<BasePlayer>, mut commands: Commands) {
     let ctx = contexts.ctx_mut();
     egui::TopBottomPanel::top("toppanel").show(ctx, |ui| {
         egui::Grid::new("toppanelgrid")
@@ -113,7 +113,7 @@ fn ui(mut contexts: EguiContexts, mut newchar: ResMut<PlayerBundle>, mut command
             .striped(true)
             .show(ui, |ui| {
                 ui.label("Character Name");
-                ui.text_edit_singleline(&mut newchar.name.0);
+                ui.text_edit_singleline(&mut newchar.name);
                 ui.label("Class");
                 egui::ComboBox::from_id_source("class")
                     .selected_text(format!("{}", newchar.class.to_string()))
@@ -139,10 +139,10 @@ fn ui(mut contexts: EguiContexts, mut newchar: ResMut<PlayerBundle>, mut command
                         }
                     });
                 ui.label("Level");
-                ui.add(egui::DragValue::new(&mut newchar.level.0));
+                ui.add(egui::DragValue::new(&mut newchar.level));
                 ui.end_row();
                 ui.label("Player Name");
-                ui.text_edit_singleline(&mut newchar.player_name.0);
+                ui.text_edit_singleline(&mut newchar.player_name);
                 ui.label("Race");
                 egui::ComboBox::from_id_source("race")
                     .selected_text(format!("{}", newchar.race.to_string()))
@@ -164,7 +164,7 @@ fn ui(mut contexts: EguiContexts, mut newchar: ResMut<PlayerBundle>, mut command
                         }
                     });
                 ui.label("XP");
-                ui.add(egui::DragValue::new(&mut newchar.xp.0));
+                ui.add(egui::DragValue::new(&mut newchar.xp));
             });
     });
     egui::SidePanel::left("left-panel").show(ctx, |ui| {
@@ -174,7 +174,7 @@ fn ui(mut contexts: EguiContexts, mut newchar: ResMut<PlayerBundle>, mut command
                 ui.label("ABILITIES");
                 ui.end_row();
                 ui.label("Strength");
-                ui.add(egui::DragValue::new(&mut newchar.abilities.str.0.stat.base));
+                ui.add(egui::DragValue::new(&mut newchar.strength));
                 ui.label("Proficiency");
                 egui::ComboBox::from_id_source("str")
                     .selected_text(format!("{:?}", newchar.abilities.str.0.proficiency))
@@ -774,7 +774,7 @@ fn ui(mut contexts: EguiContexts, mut newchar: ResMut<PlayerBundle>, mut command
             .striped(true)
             .show(ui, |ui| {
                 ui.label("Max Health");
-                ui.add(egui::DragValue::new(&mut newchar.max_health.0));
+                ui.add(egui::DragValue::new(&mut newchar.max_health));
                 ui.label("Hit Dice");
                 ui.add(egui::DragValue::new(&mut newchar.hit_dice.0.number));
                 egui::ComboBox::from_id_source("hitdice")
@@ -792,7 +792,7 @@ fn ui(mut contexts: EguiContexts, mut newchar: ResMut<PlayerBundle>, mut command
                 ui.label("Speed");
                 ui.add(egui::DragValue::new(&mut newchar.speed.0));
                 ui.label("Armor Class");
-                ui.add(egui::DragValue::new(&mut newchar.ac.0));
+                ui.add(egui::DragValue::new(&mut newchar.ac.0.total));
             });
     });
     egui::TopBottomPanel::bottom("bottompannel").show(ctx, |ui| {
@@ -802,4 +802,50 @@ fn ui(mut contexts: EguiContexts, mut newchar: ResMut<PlayerBundle>, mut command
             }
         });
     });
+}
+
+#[derive(Resource, Default, Reflect)]
+pub struct BasePlayer {
+    pub player_tag: Player,
+    pub unit_tag: Unit,
+    pub name: String,
+    pub player_name: String,
+    pub ac: f64,
+    pub speed: f64,
+    pub strength: f64,
+    pub constitution: f64,
+    pub dexterity: f64,
+    pub intelligence: f64,
+    pub wisdom: f64,
+    pub charisma: f64,
+    pub athletics: f64,
+    pub acrobatics: f64,
+    pub sleight_of_hand: f64,
+    pub stealth: f64,
+    pub arcana: f64,
+    pub history: f64,
+    pub investigation: f64,
+    pub nature: f64,
+    pub religion: f64,
+    pub animal_handling: f64,
+    pub insight: f64,
+    pub medicine: f64,
+    pub perception: f64,
+    pub survival: f64,
+    pub deception: f64,
+    pub intimidation: f64,
+    pub performance: f64,
+    pub persuasion: f64,
+    pub race: Race,
+    pub class: Class,
+    pub wep_profs: WeaponProficiencies,
+    pub prof_bonus: ProficiencyBonus,
+    pub health: f64,
+    pub max_health: f64,
+    pub background: Background,
+    pub alignment: Alignment,
+    pub xp: f64,
+    pub level: f64,
+    pub hit_dice: HitDice,
+    pub settings: SettingsBundle,
 }

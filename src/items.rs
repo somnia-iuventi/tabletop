@@ -10,122 +10,324 @@ pub struct ItemsPlugin;
 
 impl Plugin for ItemsPlugin {
     fn build(&self, app: &mut App) {
-        // app.add_event::<EquipItem>();
+        app.add_event::<EquipItem>();
         app.add_event::<UnequipItem>();
         app.add_event::<SpawnItem>();
-        // app.add_systems(Update, equip_item.run_if(on_event::<EquipItem>()));
-        // app.add_systems(Update, unequip_item.run_if(on_event::<UnequipItem>()));
+        app.add_systems(Update, equip_item.run_if(on_event::<EquipItem>()));
+        app.add_systems(Update, unequip_item.run_if(on_event::<UnequipItem>()));
         app.observe(spawn_item);
     }
 }
 
-pub struct EquipItem<T: Moddable> {
-    unit: Entity,
-    item: Entity,
-    _marker: PhantomData<T>,
+pub struct UpdateStat(Entity, StatEnum);
+
+impl Command for UpdateStat {
+    fn apply(self, world: &mut World) {
+        info!("Applying update stat command");
+        let unit_id = self.0;
+        let Some(ch) = world.entity(unit_id).get::<Children>() else {
+            return;
+        };
+        let mods = ch
+            .into_iter()
+            .filter_map(|x| world.entity(*x).get::<StatModList>())
+            .map(|x| &x.0)
+            .flatten()
+            .filter(|x| x.stat == self.1)
+            .collect::<Vec<&StatMod>>();
+
+        // add timestamp to replace arm of modtype enum
+        let replace = mods
+            .iter()
+            .filter(|x| x.mod_type == ModType::Replace)
+            .map(|x| x.value)
+            .last();
+        let add = mods
+            .iter()
+            .filter(|x| x.mod_type == ModType::Add)
+            .map(|x| x.value)
+            .sum::<f64>();
+
+        let mult = mods
+            .iter()
+            .filter(|x| x.mod_type == ModType::Mult)
+            .map(|x| x.value)
+            .sum::<f64>();
+
+        let mut best_list = mods
+            .iter()
+            .filter(|x| x.mod_type == ModType::BestOf)
+            .map(|x| x.value)
+            .collect::<Vec<f64>>();
+
+        best_list.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let best = best_list.pop();
+        let (stat, parent_modifier) = match self.1 {
+            StatEnum::Strength => (&mut world.get_mut::<Strength>(unit_id).unwrap().0.stat, 0.),
+            StatEnum::Constitution => (
+                &mut world.get_mut::<Constitution>(unit_id).unwrap().0.stat,
+                0.,
+            ),
+            StatEnum::Dexterity => (&mut world.get_mut::<Dexterity>(unit_id).unwrap().0.stat, 0.),
+            StatEnum::Intelligence => (
+                &mut world.get_mut::<Intelligence>(unit_id).unwrap().0.stat,
+                0.,
+            ),
+            StatEnum::Wisdom => (&mut world.get_mut::<Wisdom>(unit_id).unwrap().0.stat, 0.),
+            StatEnum::Charisma => (&mut world.get_mut::<Charisma>(unit_id).unwrap().0.stat, 0.),
+            StatEnum::MaxHealth => {
+                info!("Found MaxHealth Statenum");
+                (&mut world.get_mut::<MaxHealth>(unit_id).unwrap().0, 0.)
+            }
+            StatEnum::DarkVision => (&mut world.get_mut::<DarkVision>(unit_id).unwrap().0, 0.),
+            StatEnum::Acrobatics => {
+                let parent = world
+                    .get::<Dexterity>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<Acrobatics>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::ArmorClass => {
+                let parent = world
+                    .get::<Dexterity>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<Acrobatics>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Athletics => {
+                let parent = world
+                    .get::<Strength>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<Athletics>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Arcana => {
+                let parent = world
+                    .get::<Intelligence>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<Arcana>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::SleightOfHand => {
+                let parent = world
+                    .get::<Dexterity>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<SleightOfHand>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Stealth => {
+                let parent = world
+                    .get::<Dexterity>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<Stealth>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::History => {
+                let parent = world
+                    .get::<Intelligence>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<History>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Investigation => {
+                let parent = world
+                    .get::<Intelligence>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<Investigation>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Nature => {
+                let parent = world
+                    .get::<Intelligence>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<Nature>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Religion => {
+                let parent = world
+                    .get::<Intelligence>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<Religion>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::AnimalHandling => {
+                let parent = world.get::<Wisdom>(unit_id).unwrap().0.calculate_modifier();
+                (
+                    &mut world.get_mut::<AnimalHandling>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Insight => {
+                let parent = world.get::<Wisdom>(unit_id).unwrap().0.calculate_modifier();
+                (
+                    &mut world.get_mut::<Insight>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Medicine => {
+                let parent = world.get::<Wisdom>(unit_id).unwrap().0.calculate_modifier();
+                (
+                    &mut world.get_mut::<Medicine>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Perception => {
+                let parent = world.get::<Wisdom>(unit_id).unwrap().0.calculate_modifier();
+                (
+                    &mut world.get_mut::<Perception>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Survival => {
+                let parent = world.get::<Wisdom>(unit_id).unwrap().0.calculate_modifier();
+                (
+                    &mut world.get_mut::<Survival>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Deception => {
+                let parent = world
+                    .get::<Charisma>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<Deception>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Intimidation => {
+                let parent = world
+                    .get::<Charisma>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<Intimidation>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Performance => {
+                let parent = world
+                    .get::<Charisma>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<Performance>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+            StatEnum::Persuasion => {
+                let parent = world
+                    .get::<Charisma>(unit_id)
+                    .unwrap()
+                    .0
+                    .calculate_modifier();
+                (
+                    &mut world.get_mut::<Persuasion>(unit_id).unwrap().0.stat,
+                    parent,
+                )
+            }
+        };
+        let total_changed = stat.calculate_total(replace, best, add, mult, parent_modifier);
+        if total_changed {
+            for dep in stat.deps.clone() {
+                let update_dep = UpdateStat(unit_id, dep);
+                update_dep.apply(world);
+            }
+        }
+    }
 }
 
-// impl<T: Moddable> Command for EquipItem<T> {
-// fn apply(self, world: &mut World) {
-//     let mut mods = Vec::new();
-//     let ent = self.unit;
-//     let item = self.item;
-//     let maybe = world.get::<Mod>(item);
-//     let children = world.get::<Children>(ent);
-//     if let Some(ch) = children {
-//         for each in ch {
-//             let chmods = world.get::<Mod<T>>(*each);
-//             if let Some(m) = chmods {
-//                 mods.push(m);
-//             }
-//         }
-//     }
-//     let replace = mods
-//         .iter()
-//         .filter(|x| x.mod_type == ModType::Replace)
-//         .map(|x| x.value)
-//         .last();
-//     let add = mods
-//         .iter()
-//         .filter(|x| x.mod_type == ModType::Add)
-//         .map(|x| x.value)
-//         .sum::<f64>();
-//
-//     let mult = mods
-//         .iter()
-//         .filter(|x| x.mod_type == ModType::Mult)
-//         .map(|x| x.value)
-//         .sum::<f64>();
-//
-//     let mut best_list = mods
-//         .iter()
-//         .filter(|x| x.mod_type == ModType::BestOf)
-//         .map(|x| x.value)
-//         .collect::<Vec<f64>>();
-//
-//     best_list.sort_by(|a, b| a.partial_cmp(b).unwrap());
-//     let current = world.get_mut::<T>(ent);
-//     let Some(mut curr) = current else { return };
-//     let currstat = curr.stat();
-//     if let Some(rep) = replace {
-//         currstat.total = rep as i64;
-//         return;
-//     }
-//     let mut new_total = currstat.base as f64;
-//     new_total += add;
-//     new_total *= (1. + mult);
-//     if let Some(best) = best_list.pop() {
-//         if best > new_total {
-//             currstat.total = best as i64;
-//             return;
-//         }
-//     }
-//     currstat.total = new_total as i64;
-// }
-// }
+trait UpdateStatExt {
+    fn update_stat(&mut self, stat: StatEnum);
+}
 
-// fn equip_item(
-//     ent_q: Query<Entity, With<Player>>,
-//     mut ev_r: EventReader<EquipItem>,
-//     mut commands: Commands,
-// ) {
-//     info!("Inside equip item");
-//     let ent = ent_q.single();
-//     for each in ev_r.read() {
-//         let item = each.0;
-//         commands.entity(ent).add_child(item);
-//         commands.entity(ent).modify_stats(modd.stat);
-//     }
-// }
+impl UpdateStatExt for EntityCommands<'_> {
+    fn update_stat(&mut self, stat: StatEnum) {
+        let ent = self.id();
+        self.commands().add(UpdateStat(ent, stat));
+    }
+}
 
-// fn unequip_item(
-//     ent_q: Query<Entity, With<Player>>,
-//     mod_q: Query<&mut PlayerMods>,
-//     mut ev_r: EventReader<UnequipItem>,
-//     mut commands: Commands,
-// ) {
-//     info!("Inside equip item");
-//     let ent = ent_q.single();
-//     for each in ev_r.read() {
-//         let item = each.0;
-//         for mods in mod_q.get(item).unwrap().0.iter() {
-//             let mut rev = mods.clone();
-//             rev.value = -(rev.value);
-//             commands.entity(ent).modify_stats(rev);
-//         }
-//         commands.entity(ent).remove_children(&[item]);
-//     }
-// }
+fn equip_item(mut evr: EventReader<EquipItem>, modq: Query<&StatModList>, mut commands: Commands) {
+    for ev in evr.read() {
+        info!("Inside equip_item");
+        commands.entity(ev.unit).add_child(ev.item);
+        let Ok(s) = modq.get(ev.item) else { return };
+        for each in s.0.clone() {
+            commands.entity(ev.unit).update_stat(each.stat);
+        }
+    }
+}
+
+fn unequip_item(
+    mod_q: Query<&StatModList>,
+    mut ev_r: EventReader<UnequipItem>,
+    mut commands: Commands,
+) {
+    info!("Inside equip item");
+    for each in ev_r.read() {
+        commands.entity(each.item).remove_parent();
+        for mods in mod_q.get(each.item).unwrap().0.iter() {
+            let stat = mods.stat.clone();
+            commands.entity(each.unit).update_stat(stat);
+        }
+    }
+}
 
 fn spawn_item(
     trigger: Trigger<SpawnItem>,
     mut commands: Commands,
-    // mut ev_w: EventWriter<EquipItem>,
+    mut ev_w: EventWriter<EquipItem>,
+    player_q: Query<Entity, With<Player>>,
 ) {
+    let unit = player_q.single();
     info!("Inside spawn_item");
     let item = trigger.event().0.spawn_id(&mut commands);
     // other stuff later, for now just equip it to the player
-    // ev_w.send(EquipItem(item));
+    ev_w.send(EquipItem { unit, item });
 }
 
 #[derive(Component, Default, Reflect)]
@@ -140,24 +342,22 @@ impl ItemsEnum {
     fn spawn_id(&self, commands: &mut Commands) -> Entity {
         match self {
             ItemsEnum::Club => commands.spawn(Club::default()).id(),
-            ItemsEnum::RingOfHealth => {
-                let item = ExampleItem::default();
-                let thing = item.reflect_type_ident().unwrap();
-                info!("{thing}");
-                for each in item.iter_fields() {
-                    let path = each.reflect_type_path();
-                }
-                commands.spawn(item).id()
-            }
+            ItemsEnum::RingOfHealth => commands.spawn(RingOfHealth::default()).id(),
         }
     }
 }
 
-// #[derive(Event)]
-// pub struct EquipItem(Entity);
+#[derive(Event)]
+struct EquipItem {
+    unit: Entity,
+    item: Entity,
+}
 
 #[derive(Event)]
-pub struct UnequipItem(Entity);
+struct UnequipItem {
+    unit: Entity,
+    item: Entity,
+}
 
 #[derive(Event)]
 pub struct SpawnItem(pub ItemsEnum);
@@ -195,13 +395,12 @@ impl Default for Club {
 }
 
 #[derive(Bundle, Reflect)]
-pub struct ExampleItem {
+pub struct RingOfHealth {
     item: ItemBundle,
-    modd: Mod<Intelligence>,
-    modd2: Mod<Strength>,
+    mods: StatModList,
 }
 
-impl Default for ExampleItem {
+impl Default for RingOfHealth {
     fn default() -> Self {
         Self {
             item: ItemBundle {
@@ -210,8 +409,11 @@ impl Default for ExampleItem {
                 weight: Weight(0),
                 cost: Cost(1000),
             },
-            modd: Mod::new(ModType::Add, 10.),
-            modd2: Mod::new(ModType::Add, 5.),
+            mods: StatModList(vec![StatMod {
+                stat: StatEnum::MaxHealth,
+                mod_type: ModType::Add,
+                value: 10.,
+            }]),
         }
     }
 }

@@ -35,22 +35,7 @@ impl Plugin for InGamePlugin {
 struct AbilityRollPlugin;
 
 impl Plugin for AbilityRollPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_event::<AbilityRoll<Strength>>();
-        app.add_event::<AbilityRoll<Constitution>>();
-        app.add_event::<AbilityRoll<Dexterity>>();
-        app.add_event::<AbilityRoll<Intelligence>>();
-        app.add_event::<AbilityRoll<Wisdom>>();
-        app.add_event::<AbilityRoll<Charisma>>();
-        app.observe(handle_ability_roll::<Strength>);
-        app.observe(handle_ability_roll::<Constitution>);
-        app.observe(handle_ability_roll::<Dexterity>);
-        app.observe(handle_ability_roll::<Intelligence>);
-        app.observe(handle_ability_roll::<Wisdom>);
-        app.observe(handle_ability_roll::<Charisma>);
-        app.add_event::<HandleAbilityAction>();
-        app.observe(handle_ability_action);
-    }
+    fn build(&self, app: &mut App) {}
 }
 
 struct SkillRollPlugin;
@@ -59,42 +44,6 @@ impl Plugin for SkillRollPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<HandleSkillAction>();
         app.observe(handle_skill_action);
-        app.add_event::<SkillRoll<Athletics>>();
-        app.add_event::<SkillRoll<Acrobatics>>();
-        app.add_event::<SkillRoll<SleightOfHand>>();
-        app.add_event::<SkillRoll<Stealth>>();
-        app.add_event::<SkillRoll<Arcana>>();
-        app.add_event::<SkillRoll<History>>();
-        app.add_event::<SkillRoll<Investigation>>();
-        app.add_event::<SkillRoll<Nature>>();
-        app.add_event::<SkillRoll<Religion>>();
-        app.add_event::<SkillRoll<AnimalHandling>>();
-        app.add_event::<SkillRoll<Insight>>();
-        app.add_event::<SkillRoll<Medicine>>();
-        app.add_event::<SkillRoll<Perception>>();
-        app.add_event::<SkillRoll<Survival>>();
-        app.add_event::<SkillRoll<Deception>>();
-        app.add_event::<SkillRoll<Intimidation>>();
-        app.add_event::<SkillRoll<Performance>>();
-        app.add_event::<SkillRoll<Persuasion>>();
-        app.observe(handle_skill_roll::<Athletics>);
-        app.observe(handle_skill_roll::<Acrobatics>);
-        app.observe(handle_skill_roll::<SleightOfHand>);
-        app.observe(handle_skill_roll::<Stealth>);
-        app.observe(handle_skill_roll::<Arcana>);
-        app.observe(handle_skill_roll::<History>);
-        app.observe(handle_skill_roll::<Investigation>);
-        app.observe(handle_skill_roll::<Nature>);
-        app.observe(handle_skill_roll::<Religion>);
-        app.observe(handle_skill_roll::<AnimalHandling>);
-        app.observe(handle_skill_roll::<Insight>);
-        app.observe(handle_skill_roll::<Medicine>);
-        app.observe(handle_skill_roll::<Perception>);
-        app.observe(handle_skill_roll::<Survival>);
-        app.observe(handle_skill_roll::<Deception>);
-        app.observe(handle_skill_roll::<Intimidation>);
-        app.observe(handle_skill_roll::<Performance>);
-        app.observe(handle_skill_roll::<Persuasion>);
         // app.observe(handle_s)
     }
 }
@@ -144,67 +93,67 @@ fn keyboard_input(
     if keys.just_pressed(KeyCode::KeyU) {}
 }
 
-fn handle_ability_action(
-    _trigger: Trigger<HandleAbilityAction>,
-    mut commands: Commands,
-    mut combo: ResMut<KeyCombo>,
-) {
-    match combo.0[0] {
-        // Ability
-        KeyCode::KeyA => {
-            match combo.0[1] {
-                // Ability Check
-                KeyCode::KeyC => match combo.0[2] {
-                    KeyCode::KeyS => commands
-                        .trigger(AbilityRoll::<Strength>::new(AbilityRollType::AbilityCheck)),
-                    KeyCode::KeyC => commands.trigger(AbilityRoll::<Constitution>::new(
-                        AbilityRollType::AbilityCheck,
-                    )),
-                    KeyCode::KeyD => commands
-                        .trigger(AbilityRoll::<Dexterity>::new(AbilityRollType::AbilityCheck)),
-                    KeyCode::KeyI => commands.trigger(AbilityRoll::<Intelligence>::new(
-                        AbilityRollType::AbilityCheck,
-                    )),
-                    KeyCode::KeyW => {
-                        commands.trigger(AbilityRoll::<Wisdom>::new(AbilityRollType::AbilityCheck))
-                    }
-                    KeyCode::KeyH => commands
-                        .trigger(AbilityRoll::<Charisma>::new(AbilityRollType::AbilityCheck)),
-                    _ => {}
-                },
-                // Ability Saving Throw
-                KeyCode::KeyS => {
-                    match combo.0[2] {
-                        KeyCode::KeyS => commands
-                            .trigger(AbilityRoll::<Strength>::new(AbilityRollType::SavingThrow)),
-                        KeyCode::KeyC => commands.trigger(AbilityRoll::<Constitution>::new(
-                            AbilityRollType::SavingThrow,
-                        )),
-                        KeyCode::KeyD => commands
-                            .trigger(AbilityRoll::<Dexterity>::new(AbilityRollType::SavingThrow)),
-                        KeyCode::KeyI => commands.trigger(AbilityRoll::<Intelligence>::new(
-                            AbilityRollType::SavingThrow,
-                        )),
-                        KeyCode::KeyW => commands
-                            .trigger(AbilityRoll::<Wisdom>::new(AbilityRollType::SavingThrow)),
-                        KeyCode::KeyH => commands
-                            .trigger(AbilityRoll::<Charisma>::new(AbilityRollType::SavingThrow)),
-                        _ => {}
-                    }
-                }
-                _ => {}
-            }
-        }
-        // Skill
-        // KeyCode::KeyS => {
-        //     match combo.0[1] {
-        //
-        //     }
-        // }
-        _ => {}
-    }
-    combo.0.clear();
-}
+// fn handle_ability_action(
+//     _trigger: Trigger<HandleAbilityAction>,
+//     mut commands: Commands,
+//     mut combo: ResMut<KeyCombo>,
+// ) {
+//     match combo.0[0] {
+//         // Ability
+//         KeyCode::KeyA => {
+//             match combo.0[1] {
+//                 // Ability Check
+//                 KeyCode::KeyC => match combo.0[2] {
+//                     KeyCode::KeyS => commands
+//                         .trigger(AbilityRoll::<Strength>::new(AbilityRollType::AbilityCheck)),
+//                     KeyCode::KeyC => commands.trigger(AbilityRoll::<Constitution>::new(
+//                         AbilityRollType::AbilityCheck,
+//                     )),
+//                     KeyCode::KeyD => commands
+//                         .trigger(AbilityRoll::<Dexterity>::new(AbilityRollType::AbilityCheck)),
+//                     KeyCode::KeyI => commands.trigger(AbilityRoll::<Intelligence>::new(
+//                         AbilityRollType::AbilityCheck,
+//                     )),
+//                     KeyCode::KeyW => {
+//                         commands.trigger(AbilityRoll::<Wisdom>::new(AbilityRollType::AbilityCheck))
+//                     }
+//                     KeyCode::KeyH => commands
+//                         .trigger(AbilityRoll::<Charisma>::new(AbilityRollType::AbilityCheck)),
+//                     _ => {}
+//                 },
+//                 // Ability Saving Throw
+//                 KeyCode::KeyS => {
+//                     match combo.0[2] {
+//                         KeyCode::KeyS => commands
+//                             .trigger(AbilityRoll::<Strength>::new(AbilityRollType::SavingThrow)),
+//                         KeyCode::KeyC => commands.trigger(AbilityRoll::<Constitution>::new(
+//                             AbilityRollType::SavingThrow,
+//                         )),
+//                         KeyCode::KeyD => commands
+//                             .trigger(AbilityRoll::<Dexterity>::new(AbilityRollType::SavingThrow)),
+//                         KeyCode::KeyI => commands.trigger(AbilityRoll::<Intelligence>::new(
+//                             AbilityRollType::SavingThrow,
+//                         )),
+//                         KeyCode::KeyW => commands
+//                             .trigger(AbilityRoll::<Wisdom>::new(AbilityRollType::SavingThrow)),
+//                         KeyCode::KeyH => commands
+//                             .trigger(AbilityRoll::<Charisma>::new(AbilityRollType::SavingThrow)),
+//                         _ => {}
+//                     }
+//                 }
+//                 _ => {}
+//             }
+//         }
+//         // Skill
+//         // KeyCode::KeyS => {
+//         //     match combo.0[1] {
+//         //
+//         //     }
+//         // }
+//         _ => {}
+//     }
+//     combo.0.clear();
+// }
 
 fn handle_skill_action(
     _trigger: Trigger<HandleSkillAction>,
@@ -264,35 +213,13 @@ struct HandleAbilityAction;
 struct HandleSkillAction;
 
 #[derive(Event)]
-struct AbilityRoll<T: AbilityTrait> {
-    rolltype: AbilityRollType,
-    _marker: PhantomData<T>,
+struct StatRoll {
+    rolltype: RollType,
+    stat: StatEnum,
 }
 
-impl<T: AbilityTrait> AbilityRoll<T> {
-    fn new(rt: AbilityRollType) -> Self {
-        Self {
-            rolltype: rt,
-            _marker: PhantomData,
-        }
-    }
-}
-
-#[derive(Event)]
-struct SkillRoll<T: SkillTrait> {
-    _marker: PhantomData<T>,
-}
-
-impl<T: SkillTrait> SkillRoll<T> {
-    fn new() -> Self {
-        Self {
-            _marker: PhantomData,
-        }
-    }
-}
-
-enum AbilityRollType {
-    AbilityCheck,
+enum RollType {
+    Check,
     SavingThrow,
 }
 
@@ -306,7 +233,7 @@ struct Attack {
 #[derive(Event)]
 struct TakeDamage {
     unit: Entity,
-    amount: i64,
+    amount: f64,
 }
 
 fn paused_menu(mut commands: Commands) {}
@@ -319,72 +246,44 @@ fn paused_menu(mut commands: Commands) {}
 //         .show(ctx, |ui| {});
 // }
 
-fn handle_ability_roll<T: AbilityTrait>(
-    trigger: Trigger<AbilityRoll<T>>,
-    ab_query: Query<&T, With<Player>>,
-    prof_query: Query<&ProficiencyBonus, With<Player>>,
-) {
-    let dice = Dice {
-        number: 1,
-        dice_type: DiceType::D20,
-    };
-    let rolled = roll(&dice);
-    let ability = ab_query.single();
-    let modifier = ability.modifier();
-    let prof = ability.proficiency();
-    let ab_string = ability.to_string();
-    let (total, resp) = match trigger.event().rolltype {
-        AbilityRollType::AbilityCheck => (rolled + modifier, format!("{ab_string} check")),
-        AbilityRollType::SavingThrow => match prof {
-            Proficiency::None => (rolled + modifier, format!("{ab_string} saving throw")),
-            Proficiency::Proficient => {
-                let bonus = prof_query.single().0;
-                (
-                    rolled + modifier + bonus,
-                    format!("{ab_string} saving throw"),
-                )
-            }
-            Proficiency::Expert => {
-                let bonus = prof_query.single().0;
-                (
-                    rolled + modifier + (bonus * 2),
-                    format!("{ab_string} saving throw"),
-                )
-            }
-        },
-    };
-
-    info! {"Rolling {resp}!"}
-    info! {"Rolled {rolled}, plus modifiers equals {total}"};
-}
-
-fn handle_skill_roll<T: SkillTrait>(
-    _trigger: Trigger<SkillRoll<T>>,
-    skill_query: Query<&T, With<Player>>,
-    prof_query: Query<&ProficiencyBonus, With<Player>>,
-) {
-    let dice = Dice {
-        number: 1,
-        dice_type: DiceType::D20,
-    };
-    let rolled = roll(&dice);
-    let skill = skill_query.single();
-    let prof = skill.proficiency();
-    let skill_string = skill.to_string();
-    let total = match prof {
-        Proficiency::None => rolled,
-        Proficiency::Proficient => {
-            let bonus = prof_query.single().0;
-            rolled + bonus
-        }
-        Proficiency::Expert => {
-            let bonus = prof_query.single().0;
-            rolled + (bonus * 2)
-        }
-    };
-    info! {"Rolling {skill_string} check!"}
-    info! {"Rolled {rolled}, plus modifiers equals {total}"};
-}
+// fn handle_roll<T: Component>(
+//     trigger: Trigger<StatRoll>,
+//     ab_query: Query<&T, With<Player>>,
+//     prof_query: Query<&ProficiencyBonus, With<Player>>,
+// ) {
+//     let dice = Dice {
+//         number: 1,
+//         dice_type: DiceType::D20,
+//     };
+//     let rolled = roll(&dice);
+//     let ability = ab_query.single();
+//     let modifier = ability.modifier();
+//     let prof = ability.proficiency();
+//     let ab_string = ability.to_string();
+//     let (total, resp) = match trigger.event().rolltype {
+//         AbilityRollType::AbilityCheck => (rolled + modifier, format!("{ab_string} check")),
+//         AbilityRollType::SavingThrow => match prof {
+//             Proficiency::None => (rolled + modifier, format!("{ab_string} saving throw")),
+//             Proficiency::Proficient => {
+//                 let bonus = prof_query.single().0;
+//                 (
+//                     rolled + modifier + bonus,
+//                     format!("{ab_string} saving throw"),
+//                 )
+//             }
+//             Proficiency::Expert => {
+//                 let bonus = prof_query.single().0;
+//                 (
+//                     rolled + modifier + (bonus * 2),
+//                     format!("{ab_string} saving throw"),
+//                 )
+//             }
+//         },
+//     };
+//
+//     info! {"Rolling {resp}!"}
+//     info! {"Rolled {rolled}, plus modifiers equals {total}"};
+// }
 
 // fn handle_attack(
 //     trigger: Trigger<Attack>,
@@ -539,7 +438,7 @@ fn handle_taking_damage(
         .expect("The event.unit to exist and point to an existing entity");
     info!("Previous health: {}", health.0);
     health.0 -= event.amount;
-    if health.0 > 0 {
+    if health.0 > 0. {
         info!("Current health: {}", health.0);
         return;
     } else {
@@ -547,7 +446,7 @@ fn handle_taking_damage(
         match player {
             None => commands.entity(event.unit).despawn(),
             Some(_) => {
-                let dead = health.0.abs() >= (max_health.0 * 2);
+                let dead = health.0.abs() >= (max_health.0.total * 2.);
                 if dead {}
             }
         }
