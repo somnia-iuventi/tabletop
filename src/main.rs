@@ -142,32 +142,3 @@ enum AppState {
     SaveCharacter,
     InGame,
 }
-
-#[derive(Component)]
-struct Immortal;
-
-struct RecursiveDespawn(Entity);
-
-impl Command for RecursiveDespawn {
-    fn apply(self, world: &mut World) {
-        let ent = self.0;
-        let name = world.get::<UnitName>(ent).unwrap();
-        info!("{}", name.0);
-        let mut immortals = Vec::new();
-        if let Some(ch) = world.get::<Children>(ent) {
-            for child in ch {
-                let cname = world.get::<UnitName>(*child).unwrap();
-                info!("{}", cname.0);
-                if let Some(_) = world.get::<Immortal>(*child) {
-                    immortals.push(*child);
-                }
-            }
-        }
-        for immortal in immortals {
-            if let Some(mut mutable) = world.get_entity_mut(immortal) {
-                mutable.remove_parent();
-            }
-        }
-        world.entity_mut(ent).despawn_recursive();
-    }
-}

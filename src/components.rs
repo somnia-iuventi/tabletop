@@ -1,5 +1,9 @@
-use bevy::prelude::*;
-use std::{collections::HashMap, marker::PhantomData};
+use bevy::{ecs::query::QueryData, prelude::*};
+use std::{
+    collections::HashMap,
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+};
 use strum::{Display, EnumIter};
 
 #[derive(Component, Default, Reflect)]
@@ -71,46 +75,83 @@ pub struct Player;
 #[derive(Component)]
 pub struct RootUI;
 
-#[derive(Component, Default, Reflect, Clone)]
+#[derive(Component, Default, Reflect, Clone, Debug, PartialEq)]
 #[reflect(Component)]
 pub struct Stat {
-    pub base: i64,
-    pub total: i64,
+    pub base: f64,
+    pub total: f64,
+    pub deps: Vec<StatEnum>,
 }
 
 impl Stat {
-    pub fn new(val: i64) -> Self {
+    pub fn new(num: f64, deps: Vec<StatEnum>) -> Self {
         Self {
-            base: val,
-            total: val,
+            base: num,
+            total: num,
+            deps,
         }
     }
+    pub fn calculate_total(
+        &mut self,
+        replace: Option<f64>,
+        best: Option<f64>,
+        add: f64,
+        mult: f64,
+        parent_modifier: f64,
+    ) -> bool {
+        info!("inside maxhealth calculation");
+        info!("current base: {}", self.base);
+        info!("current total: {}", self.total);
+        if let Some(rep) = replace {
+            if self.total != rep {
+                self.total = rep;
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        info!("no replace mods");
+        let mut new_total = self.base;
+        new_total += add;
+        new_total += parent_modifier;
+        new_total *= 1. + mult;
+        new_total = if let Some(b) = best {
+            b.max(new_total)
+        } else {
+            new_total
+        };
+        if new_total != self.total {
+            self.total = new_total;
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+
+#[derive(Component, Default, Reflect, Clone, Debug, PartialEq)]
+#[reflect(Component)]
+pub struct StatModList(pub Vec<StatMod>);
+
+#[derive(Component, Default, Reflect, Clone, Debug, PartialEq)]
+#[reflect(Component)]
+pub struct StatMod {
+    pub stat: StatEnum,
+    pub value: f64,
+    pub mod_type: ModType,
 }
 
 #[derive(Component, Default, Reflect, Clone)]
 #[reflect(Component)]
 pub struct Ability {
     pub stat: Stat,
-    pub modifier: i64,
     pub proficiency: Proficiency,
 }
 
 impl Ability {
-    pub fn calculate_modifier(&mut self) {
-        let new_mod = ((self.stat.total as f64 - 10.) / 2.).floor() as i64;
-        if new_mod != self.modifier {
-            self.modifier = new_mod;
-        }
-    }
-}
-
-#[derive(Component, Default, Reflect, Clone)]
-#[reflect(Component)]
-pub struct Defense(pub Stat);
-
-impl Moddable for Defense {
-    fn stat<'a>(&'a mut self) -> &'a mut Stat {
-        &mut self.0
+    pub fn calculate_modifier(&self) -> f64 {
+        ((self.stat.total - 10.) / 2.).floor()
     }
 }
 
@@ -118,257 +159,25 @@ impl Moddable for Defense {
 #[reflect(Component)]
 pub struct Strength(pub Ability);
 
-impl Moddable for Strength {
-    fn stat<'a>(&'a mut self) -> &'a mut Stat {
-        &mut self.0.stat
-    }
-}
-
-impl AbilityTrait for Strength {
-    fn set_base(&mut self, val: i64) {
-        self.0.stat.base = val;
-    }
-
-    fn set_value(&mut self, val: i64) {
-        self.0.stat.total = val;
-    }
-
-    fn base(&self) -> i64 {
-        self.0.stat.base
-    }
-
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-
-    fn modifier(&self) -> i64 {
-        self.0.modifier
-    }
-
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-
-    fn to_string(&self) -> String {
-        "Strength".into()
-    }
-}
-
 #[derive(Component, Default, Reflect, Clone)]
 #[reflect(Component)]
 pub struct Constitution(pub Ability);
-
-impl Moddable for Constitution {
-    fn stat<'a>(&'a mut self) -> &'a mut Stat {
-        &mut self.0.stat
-    }
-}
-
-impl AbilityTrait for Constitution {
-    fn set_base(&mut self, val: i64) {
-        self.0.stat.base = val;
-    }
-
-    fn set_value(&mut self, val: i64) {
-        self.0.stat.total = val;
-    }
-
-    fn base(&self) -> i64 {
-        self.0.stat.base
-    }
-
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-
-    fn modifier(&self) -> i64 {
-        self.0.modifier
-    }
-
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-
-    fn to_string(&self) -> String {
-        "Constitution".into()
-    }
-}
 
 #[derive(Component, Default, Reflect, Clone)]
 #[reflect(Component)]
 pub struct Dexterity(pub Ability);
 
-impl Moddable for Dexterity {
-    fn stat<'a>(&'a mut self) -> &'a mut Stat {
-        &mut self.0.stat
-    }
-}
-
-impl AbilityTrait for Dexterity {
-    fn set_base(&mut self, val: i64) {
-        self.0.stat.base = val;
-    }
-
-    fn set_value(&mut self, val: i64) {
-        self.0.stat.total = val;
-    }
-
-    fn base(&self) -> i64 {
-        self.0.stat.base
-    }
-
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-
-    fn modifier(&self) -> i64 {
-        self.0.modifier
-    }
-
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-
-    fn to_string(&self) -> String {
-        "Dexterity".into()
-    }
-}
-
 #[derive(Component, Default, Reflect, Clone)]
 #[reflect(Component)]
 pub struct Intelligence(pub Ability);
-
-impl Moddable for Intelligence {
-    fn stat<'a>(&'a mut self) -> &'a mut Stat {
-        &mut self.0.stat
-    }
-}
-
-impl AbilityTrait for Intelligence {
-    fn set_base(&mut self, val: i64) {
-        self.0.stat.base = val;
-    }
-
-    fn set_value(&mut self, val: i64) {
-        self.0.stat.total = val;
-    }
-
-    fn base(&self) -> i64 {
-        self.0.stat.base
-    }
-
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-
-    fn modifier(&self) -> i64 {
-        self.0.modifier
-    }
-
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-
-    fn to_string(&self) -> String {
-        "Intelligence".into()
-    }
-}
 
 #[derive(Component, Default, Reflect, Clone)]
 #[reflect(Component)]
 pub struct Wisdom(pub Ability);
 
-impl Moddable for Wisdom {
-    fn stat<'a>(&'a mut self) -> &'a mut Stat {
-        &mut self.0.stat
-    }
-}
-
-impl AbilityTrait for Wisdom {
-    fn set_base(&mut self, val: i64) {
-        self.0.stat.base = val;
-    }
-
-    fn set_value(&mut self, val: i64) {
-        self.0.stat.total = val;
-    }
-
-    fn base(&self) -> i64 {
-        self.0.stat.base
-    }
-
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-
-    fn modifier(&self) -> i64 {
-        self.0.modifier
-    }
-
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-
-    fn to_string(&self) -> String {
-        "Wisdom".into()
-    }
-}
-
 #[derive(Component, Default, Reflect, Clone)]
 #[reflect(Component)]
 pub struct Charisma(pub Ability);
-
-impl Moddable for Charisma {
-    fn stat<'a>(&'a mut self) -> &'a mut Stat {
-        &mut self.0.stat
-    }
-}
-
-impl AbilityTrait for Charisma {
-    fn set_base(&mut self, val: i64) {
-        self.0.stat.base = val;
-    }
-
-    fn set_value(&mut self, val: i64) {
-        self.0.stat.total = val;
-    }
-
-    fn base(&self) -> i64 {
-        self.0.stat.base
-    }
-
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-
-    fn modifier(&self) -> i64 {
-        self.0.modifier
-    }
-
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-
-    fn to_string(&self) -> String {
-        "Charisma".into()
-    }
-}
-
-pub trait AbilityTrait: Component {
-    fn set_base(&mut self, val: i64);
-
-    fn set_value(&mut self, val: i64);
-
-    fn base(&self) -> i64;
-
-    fn value(&self) -> i64;
-
-    fn modifier(&self) -> i64;
-
-    fn proficiency(&self) -> &Proficiency;
-
-    fn to_string(&self) -> String;
-}
 
 #[derive(Bundle, Default, Clone, Reflect)]
 pub struct AbilitiesBundle {
@@ -396,43 +205,28 @@ pub struct Skill {
     pub proficiency: Proficiency,
 }
 
-pub trait SkillTrait: Component {
-    fn value(&self) -> i64;
-
-    fn proficiency(&self) -> &Proficiency;
-
-    fn to_string(&self) -> String;
-}
-
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Athletics(pub Skill);
-
-impl SkillTrait for Athletics {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Athletics".into()
-    }
-}
 
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Acrobatics(pub Skill);
 
-impl SkillTrait for Acrobatics {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Acrobatics".into()
+#[derive(QueryData)]
+#[query_data(mutable)]
+pub struct AcrobaticsUpdateQ {
+    stat: &'static mut Acrobatics,
+    par: AcroParQ,
+}
+#[derive(QueryData)]
+pub struct AcroParQ {
+    s1: &'static Dexterity,
+}
+
+impl<'a> AcroParQItem<'a> {
+    fn mods(&self) -> f64 {
+        self.s1.calculate_modifier()
     }
 }
 
@@ -440,257 +234,65 @@ impl SkillTrait for Acrobatics {
 #[reflect(Component)]
 pub struct SleightOfHand(pub Skill);
 
-impl SkillTrait for SleightOfHand {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "SleightOfHand".into()
-    }
-}
-
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Stealth(pub Skill);
-
-impl SkillTrait for Stealth {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Stealth".into()
-    }
-}
 
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Arcana(pub Skill);
 
-impl SkillTrait for Arcana {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Arcana".into()
-    }
-}
-
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct History(pub Skill);
-
-impl SkillTrait for History {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "History".into()
-    }
-}
 
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Investigation(pub Skill);
 
-impl SkillTrait for Investigation {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Investigation".into()
-    }
-}
-
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Nature(pub Skill);
-
-impl SkillTrait for Nature {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Nature".into()
-    }
-}
 
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Religion(pub Skill);
 
-impl SkillTrait for Religion {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Religion".into()
-    }
-}
-
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct AnimalHandling(pub Skill);
-
-impl SkillTrait for AnimalHandling {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "AnimalHandling".into()
-    }
-}
 
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Insight(pub Skill);
 
-impl SkillTrait for Insight {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Insight".into()
-    }
-}
-
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Medicine(pub Skill);
-
-impl SkillTrait for Medicine {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Medicine".into()
-    }
-}
 
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Perception(pub Skill);
 
-impl SkillTrait for Perception {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Perception".into()
-    }
-}
-
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Survival(pub Skill);
-
-impl SkillTrait for Survival {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Survival".into()
-    }
-}
 
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Deception(pub Skill);
 
-impl SkillTrait for Deception {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Deception".into()
-    }
-}
-
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Intimidation(pub Skill);
-
-impl SkillTrait for Intimidation {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Intimidation".into()
-    }
-}
 
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Performance(pub Skill);
 
-impl SkillTrait for Performance {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Performance".into()
-    }
-}
-
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
 pub struct Persuasion(pub Skill);
-
-impl SkillTrait for Persuasion {
-    fn value(&self) -> i64 {
-        self.0.stat.total
-    }
-    fn proficiency<'a>(&'a self) -> &'a Proficiency {
-        &self.0.proficiency
-    }
-    fn to_string(&self) -> String {
-        "Persuasion".into()
-    }
-}
 
 #[derive(Bundle, Default, Clone, Reflect)]
 pub struct SkillsBundle {
@@ -745,15 +347,15 @@ pub struct UnitName(pub String);
 #[reflect(Component)]
 pub struct PlayerName(pub String);
 
-#[derive(Component, Default, Clone, Reflect)]
+#[derive(Component, Default, Clone, Reflect, PartialEq)]
 #[reflect(Component)]
-pub struct ArmorClass(pub i64);
+pub struct ArmorClass(pub Stat);
 
 #[derive(Component, Default, Clone, Reflect)]
 #[reflect(Component)]
-pub struct Speed(pub i64);
+pub struct Speed(pub Stat);
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect, Default, Clone, PartialEq)]
 #[reflect(Component)]
 pub struct DarkVision(pub Stat);
 
@@ -831,7 +433,7 @@ impl ProficiencyBonus {
 
 #[derive(Component, Default, PartialEq, Eq, Debug, Clone, Reflect)]
 #[reflect(Component)]
-pub struct Xp(pub u64);
+pub struct Xp(pub f64);
 
 #[derive(Component, Default, PartialEq, Eq, EnumIter, Debug, Display, Clone, Reflect)]
 #[reflect(Component)]
@@ -1031,13 +633,13 @@ pub struct ItemName(pub String);
 #[reflect(Component)]
 pub struct Range(pub i64);
 
-#[derive(Component, Default, PartialEq, Eq, Debug, Clone, Reflect)]
+#[derive(Component, Default, PartialEq, Debug, Clone, Reflect)]
 #[reflect(Component)]
-pub struct Health(pub i64);
+pub struct Health(pub f64);
 
-#[derive(Component, Default, PartialEq, Eq, Debug, Clone, Reflect)]
+#[derive(Component, Default, PartialEq, Debug, Clone, Reflect)]
 #[reflect(Component)]
-pub struct MaxHealth(pub i64);
+pub struct MaxHealth(pub Stat);
 
 #[derive(Component, Debug, Clone, Default, Reflect)]
 #[reflect(Component)]
@@ -1113,30 +715,7 @@ pub struct TwoHanded;
 #[reflect(Component)]
 pub struct Versatile;
 
-#[derive(Component, Reflect, Default)]
-#[reflect(Component)]
-pub struct Mod<T: Moddable> {
-    pub mod_type: ModType,
-    pub value: f64,
-    #[reflect(ignore)]
-    _marker: PhantomData<T>,
-}
-
-impl<T: Moddable> Mod<T> {
-    pub fn new(mod_type: ModType, value: f64) -> Self {
-        Self {
-            mod_type,
-            value,
-            _marker: PhantomData,
-        }
-    }
-}
-
-pub trait Moddable: Send + Sync {
-    fn stat(&mut self) -> &mut Stat;
-}
-
-#[derive(Component, Reflect, Default, Clone, Debug, PartialEq)]
+#[derive(Component, Reflect, Default, Clone, Debug, PartialEq, Eq)]
 #[reflect(Component)]
 pub enum ModType {
     #[default]
@@ -1146,13 +725,35 @@ pub enum ModType {
     BestOf,
 }
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect, Default, Clone, PartialEq, Eq, Debug)]
 #[reflect(Component)]
-pub enum ModdableEnum {
+pub enum StatEnum {
     #[default]
-    None,
-    Health(Health),
-    MaxHealth(MaxHealth),
-    ArmorClass(ArmorClass),
-    DarkVision(DarkVision),
+    MaxHealth,
+    ArmorClass,
+    DarkVision,
+    Strength,
+    Constitution,
+    Dexterity,
+    Intelligence,
+    Wisdom,
+    Charisma,
+    Athletics,
+    Acrobatics,
+    SleightOfHand,
+    Stealth,
+    Arcana,
+    History,
+    Investigation,
+    Nature,
+    Religion,
+    AnimalHandling,
+    Insight,
+    Medicine,
+    Perception,
+    Survival,
+    Deception,
+    Intimidation,
+    Performance,
+    Persuasion,
 }
